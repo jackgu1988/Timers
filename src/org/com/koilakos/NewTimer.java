@@ -28,6 +28,7 @@ import org.jdesktop.swingx.JXTaskPane;
 import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -62,10 +63,6 @@ public class NewTimer extends JXTaskPane {
 	private boolean counting = false;
 	/** Number of cars */
 	private int cars = 0;
-	/** When job started */
-	private Date startTime;
-	/** When job finished */
-	private Date stopTime;
 	/** Label that works as the titles for the table columns */
 	private JLabel outLbl = new JLabel();
 	/**
@@ -135,39 +132,62 @@ public class NewTimer extends JXTaskPane {
 				int column = e.getColumn();
 				int row = e.getFirstRow();
 
-				TableModel model = table.getModel();
-				String newValue = "";
+				if (column < 3) {
 
-				if (column == 1 || column == 2) {
+					TableModel model = table.getModel();
+					String newValue = "";
 
-					newValue = (String) model.getValueAt(row, column);
+					if (column == 1 || column == 2) {
 
-					if (validate(newValue) == false) {
-						JOptionPane
-								.showMessageDialog(
-										frame,
-										"Invalid time input.\nIt should look like HH:MM:SS.",
-										"Error", JOptionPane.ERROR_MESSAGE);
-						if (column == 1)
-							model.setValueAt(startTimes.get(row), row, column);
-						else if (column == 2)
-							model.setValueAt(stopTimes.get(row), row, column);
-					} else {
-						if (column == 1) {
-							startTimes.set(row, newValue);
-							list.get(list.size() - 1)[1] = startTimes
-									.get(startTimes.size() - 1);
-						} else if (column == 2) {
-							stopTimes.set(row, newValue);
-							list.get(list.size() - 1)[2] = stopTimes
-									.get(stopTimes.size() - 1);
+						newValue = (String) model.getValueAt(row, column);
+
+						if (!validate(newValue)) {
+							JOptionPane
+									.showMessageDialog(
+											frame,
+											"Invalid time input.\nIt should look like HH:MM:SS.",
+											"Error", JOptionPane.ERROR_MESSAGE);
+							if (column == 1)
+								model.setValueAt(startTimes.get(row), row,
+										column);
+							else if (column == 2)
+								model.setValueAt(stopTimes.get(row), row,
+										column);
+						} else if (!correctOrder(row,
+								(String) model.getValueAt(row, 1),
+								(String) model.getValueAt(row, 2))) {
+							JOptionPane
+									.showMessageDialog(
+											frame,
+											"Stopping time should be greater\nthan starting time.",
+											"Error", JOptionPane.ERROR_MESSAGE);
+							if (column == 1)
+								table.setValueAt(startTimes.get(row), row,
+										column);
+							else if (column == 2) {
+								table.setValueAt(stopTimes.get(row), row,
+										column);
+								System.out.println("oh no");
+							}
+						} else {
+							if (column == 1) {
+								startTimes.set(row, newValue);
+								list.get(row)[1] = startTimes.get(row);
+							} else if (column == 2) {
+								stopTimes.set(row, newValue);
+								list.get(row)[2] = stopTimes.get(row);
+							}
+
+							String time = totalTime(row);
+
+							list.get(list.size() - 1)[3] = time;
+							table.setValueAt(time, row, 3);
 						}
-						// TODO update time spent
+					} else if (column == 0) {
+						newValue = (String) model.getValueAt(row, column);
+						labels.set(row, newValue);
+						list.get(list.size() - 1)[0] = labels.get(labels.size() - 1);
 					}
-				} else if (column == 0) {
-					newValue = (String) model.getValueAt(row, column);
-					labels.set(row, newValue);
-					list.get(list.size() - 1)[0] = labels.get(labels.size() - 1);
 				}
 			}
 		});
@@ -204,7 +224,7 @@ public class NewTimer extends JXTaskPane {
 					stopTimes.set(stopTimes.size() - 1, getTime());
 					list.get(list.size() - 1)[2] = stopTimes.get(stopTimes
 							.size() - 1);
-					list.get(list.size() - 1)[3] = totalTime();
+					list.get(list.size() - 1)[3] = totalTime(stopTimes.size() - 1);
 					model.removeRow(model.getRowCount() - 1);
 					model.addRow(list.get(list.size() - 1));
 					btn2.setEnabled(true);
@@ -251,10 +271,6 @@ public class NewTimer extends JXTaskPane {
 	 */
 	private String getTime() {
 		Calendar cal = Calendar.getInstance();
-		if (counting)
-			startTime = cal.getTime();
-		else
-			stopTime = cal.getTime();
 		SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 		return sdf.format(cal.getTime());
 	}
@@ -264,16 +280,48 @@ public class NewTimer extends JXTaskPane {
 	 * 
 	 * @return how much time the job required
 	 */
-	private String totalTime() {
-		long difference = stopTime.getTime() - startTime.getTime();
-		int days = (int) (difference / (1000 * 60 * 60 * 24));
-		int hours = (int) ((difference - (1000 * 60 * 60 * 24 * days)) / (1000 * 60 * 60));
-		int min = (int) (difference - (1000 * 60 * 60 * 24 * days) - (1000 * 60 * 60 * hours))
-				/ (1000 * 60);
-		int sec = (int) (difference - (1000 * 60 * 60 * 24 * days)
-				- (1000 * 60 * 60 * hours) - (1000 * 60 * min)) / 1000;
+	private String totalTime(int index) {
 
-		return hours + "h" + min + "m" + sec + "s";
+		SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+
+		try {
+			Date dStart = sdf.parse(startTimes.get(index));
+			Date dStop = sdf.parse(stopTimes.get(index));
+
+			long difference = dStop.getTime() - dStart.getTime();
+			int days = (int) (difference / (1000 * 60 * 60 * 24));
+			int hours = (int) ((difference - (1000 * 60 * 60 * 24 * days)) / (1000 * 60 * 60));
+			int min = (int) (difference - (1000 * 60 * 60 * 24 * days) - (1000 * 60 * 60 * hours))
+					/ (1000 * 60);
+			int sec = (int) (difference - (1000 * 60 * 60 * 24 * days)
+					- (1000 * 60 * 60 * hours) - (1000 * 60 * min)) / 1000;
+
+			return hours + "h" + min + "m" + sec + "s";
+
+		} catch (ParseException e) {
+			e.printStackTrace();
+			return null;
+		}
+
+	}
+
+	private boolean correctOrder(int index, String start, String end) {
+
+		SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+
+		try {
+			Date dStart = sdf.parse(start);
+			Date dStop = sdf.parse(end);
+
+			if (dStop.compareTo(dStart) >= 0)
+				return true;
+			else
+				return false;
+
+		} catch (ParseException e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	/**
@@ -284,10 +332,8 @@ public class NewTimer extends JXTaskPane {
 	 * @return true valid time format, false invalid time format
 	 */
 	private boolean validate(final String time) {
-
 		matcher = pattern.matcher(time);
 		return matcher.matches();
-
 	}
 
 }

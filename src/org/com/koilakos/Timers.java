@@ -87,6 +87,14 @@ public class Timers {
 		frmTimer.getContentPane().setLayout(null);
 
 		TimerPane timer = new TimerPane();
+		timer.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				JOptionPane.showMessageDialog(frmTimer,
+						"Stop it!\nI have not been implemented yet!", "Grrr",
+						JOptionPane.ERROR_MESSAGE);
+			}
+		});
 		timer.setSize(313, 25);
 		timer.setLocation(0, 0);
 		frmTimer.getContentPane().add(timer);
@@ -112,6 +120,10 @@ public class Timers {
 		scrollPane.setViewportView(cont);
 
 		cont.setBackground(Color.DARK_GRAY);
+
+		JButton btnHistory = new JButton("History");
+		btnHistory.setBounds(242, 0, 85, 25);
+		frmTimer.getContentPane().add(btnHistory);
 
 	}
 }
