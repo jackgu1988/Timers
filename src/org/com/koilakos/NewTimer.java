@@ -41,6 +41,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 
 /**
+ * Class NewTimer
+ * 
+ * Creates a timer for a selected worker and performs all actions.
  * 
  * @author jack gurulian
  * 
@@ -48,32 +51,58 @@ import javax.swing.table.TableModel;
 public class NewTimer extends JXTaskPane {
 
 	/**
-	 * 
+	 * ID
 	 */
 	private static final long serialVersionUID = 1L;
+	/** Start/Stop/Continue button */
 	private JButton btn1 = new JButton();
+	/** New car button */
 	private JButton btn2 = new JButton();
+	/** True if the counter is running */
 	private boolean counting = false;
+	/** Number of cars */
 	private int cars = 0;
+	/** When job started */
 	private Date startTime;
+	/** When job finished */
 	private Date stopTime;
+	/** Label that works as the titles for the table columns */
 	private JLabel outLbl = new JLabel();
+	/**
+	 * A container with a more free layout to hold the various interface buttons
+	 */
 	private JPanel container = new JPanel();
+	/** Table to present the metrics */
 	private JTable table;
+	/** ArrayList to hold the data (time started, finished etc) */
 	private ArrayList<Object[]> list = new ArrayList<Object[]>();
+	/** ArrayList to hold the start times */
+	private ArrayList<String> startTimes = new ArrayList<String>();
+	/** ArrayList to hold the stop times */
+	private ArrayList<String> stopTimes = new ArrayList<String>();
+	/** ArrayList to hold the car labels */
+	private ArrayList<String> labels = new ArrayList<String>();
+
+	/** Icon to be presented when a counter is running */
 	private ImageIcon loading = new ImageIcon(
 			Timers.class.getResource("/icons/loader.gif"));
+	/** Label to hold the running icon */
 	private JLabel load = new JLabel(loading);
 
+	/** REGEX to validate time format */
 	private static final String TIME24HOURS_PATTERN = "([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]";
-
+	/** Pattern for time format */
 	private Pattern pattern;
+	/** Matcher for time format */
 	private Matcher matcher;
 
 	/**
+	 * Constructor
 	 * 
 	 * @param name
+	 *            the name of the JXTaskPane
 	 * @param frame
+	 *            the frame it lives in
 	 */
 	public NewTimer(String name, final JFrame frame) {
 		this.setSize(450, 25);
@@ -106,9 +135,12 @@ public class NewTimer extends JXTaskPane {
 				int column = e.getColumn();
 				int row = e.getFirstRow();
 
+				TableModel model = table.getModel();
+				String newValue = "";
+
 				if (column == 1 || column == 2) {
-					TableModel model = table.getModel();
-					String newValue = (String) model.getValueAt(row, column);
+
+					newValue = (String) model.getValueAt(row, column);
 
 					if (validate(newValue) == false) {
 						JOptionPane
@@ -116,10 +148,26 @@ public class NewTimer extends JXTaskPane {
 										frame,
 										"Invalid time input.\nIt should look like HH:MM:SS.",
 										"Error", JOptionPane.ERROR_MESSAGE);
-						// model.setValueAt(value, row, column);
+						if (column == 1)
+							model.setValueAt(startTimes.get(row), row, column);
+						else if (column == 2)
+							model.setValueAt(stopTimes.get(row), row, column);
 					} else {
+						if (column == 1) {
+							startTimes.set(row, newValue);
+							list.get(list.size() - 1)[1] = startTimes
+									.get(startTimes.size() - 1);
+						} else if (column == 2) {
+							stopTimes.set(row, newValue);
+							list.get(list.size() - 1)[2] = stopTimes
+									.get(stopTimes.size() - 1);
+						}
 						// TODO update time spent
 					}
+				} else if (column == 0) {
+					newValue = (String) model.getValueAt(row, column);
+					labels.set(row, newValue);
+					list.get(list.size() - 1)[0] = labels.get(labels.size() - 1);
 				}
 			}
 		});
@@ -142,14 +190,20 @@ public class NewTimer extends JXTaskPane {
 					btn2.setEnabled(false);
 					if (!btn1.getLabel().equals("Continue")) {
 						cars++;
-						list.add(new Object[] { cars, getTime(), "", "" });
+						labels.add("" + cars);
+						startTimes.add(getTime());
+						stopTimes.add("");
+						list.add(new Object[] { labels.get(labels.size() - 1),
+								startTimes.get(startTimes.size() - 1), "", "" });
 						model.addRow(list.get(list.size() - 1));
 						btn1.setText("Stop");
 					} else {
 						btn1.setText("Stop");
 					}
 				} else {
-					list.get(list.size() - 1)[2] = getTime();
+					stopTimes.set(stopTimes.size() - 1, getTime());
+					list.get(list.size() - 1)[2] = stopTimes.get(stopTimes
+							.size() - 1);
 					list.get(list.size() - 1)[3] = totalTime();
 					model.removeRow(model.getRowCount() - 1);
 					model.addRow(list.get(list.size() - 1));
@@ -167,7 +221,11 @@ public class NewTimer extends JXTaskPane {
 			public void mouseClicked(MouseEvent e) {
 				counting = true;
 				cars++;
-				list.add(new Object[] { cars, getTime(), "", "" });
+				labels.add("" + cars);
+				startTimes.add(getTime());
+				stopTimes.add("");
+				list.add(new Object[] { labels.get(labels.size() - 1),
+						startTimes.get(startTimes.size() - 1), "", "" });
 				model.addRow(list.get(list.size() - 1));
 				btn2.setEnabled(false);
 				btn1.setText("Stop");
@@ -186,6 +244,11 @@ public class NewTimer extends JXTaskPane {
 		this.add(container);
 	}
 
+	/**
+	 * Returns current time
+	 * 
+	 * @return current time
+	 */
 	private String getTime() {
 		Calendar cal = Calendar.getInstance();
 		if (counting)
@@ -196,6 +259,11 @@ public class NewTimer extends JXTaskPane {
 		return sdf.format(cal.getTime());
 	}
 
+	/**
+	 * Calculates the time that was needed for the job to finish
+	 * 
+	 * @return how much time the job required
+	 */
 	private String totalTime() {
 		long difference = stopTime.getTime() - startTime.getTime();
 		int days = (int) (difference / (1000 * 60 * 60 * 24));
@@ -213,7 +281,7 @@ public class NewTimer extends JXTaskPane {
 	 * 
 	 * @param time
 	 *            time address for validation
-	 * @return true valid time fromat, false invalid time format
+	 * @return true valid time format, false invalid time format
 	 */
 	private boolean validate(final String time) {
 
